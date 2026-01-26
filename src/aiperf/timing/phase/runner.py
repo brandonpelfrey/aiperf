@@ -75,6 +75,7 @@ class PhaseRunner(TaskManagerMixin):
         concurrency_manager: ConcurrencyManager,
         cancellation_policy: RequestCancellationSimulator,
         callback_handler: CreditCallbackHandler,
+        url_index_callback: Callable[[], int] | None = None,
         **kwargs,
     ) -> None:
         """Initialize phase runner.
@@ -87,6 +88,8 @@ class PhaseRunner(TaskManagerMixin):
             concurrency_manager: Manages session and prefill concurrency slots.
             cancellation_policy: Determines credit cancellation delays.
             callback_handler: Handles credit returns and TTFT events.
+            url_index_callback: Optional callback that returns the next URL index for
+                multi-URL load balancing. Passed to CreditIssuer.
         """
         super().__init__(**kwargs)
         self._config = config
@@ -127,6 +130,7 @@ class PhaseRunner(TaskManagerMixin):
             credit_router=self._credit_router,
             cancellation_policy=self._cancellation_policy,
             lifecycle=self._lifecycle,
+            url_index_callback=url_index_callback,
         )
 
         # Execution state

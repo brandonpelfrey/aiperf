@@ -15,6 +15,7 @@ Key responsibilities:
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from aiperf.common.enums import CreditPhase
@@ -58,6 +59,7 @@ class CreditIssuer:
         credit_router: CreditRouterProtocol,
         cancellation_policy: RequestCancellationSimulator,
         lifecycle: PhaseLifecycle,
+        url_index_callback: Callable[[], int] | None = None,
     ) -> None:
         """Initialize credit issuer.
 
@@ -69,6 +71,8 @@ class CreditIssuer:
             credit_router: Routes credits to workers.
             cancellation_policy: Determines cancellation delays.
             lifecycle: Phase lifecycle for timestamp data.
+            url_index_callback: Optional callback that returns the next URL index for
+                multi-URL load balancing. If None, url_index will be None in credits.
         """
         self._phase = phase
         self._stop_checker = stop_checker
@@ -77,6 +81,7 @@ class CreditIssuer:
         self._credit_router = credit_router
         self._cancellation_policy = cancellation_policy
         self._lifecycle = lifecycle
+        self._url_index_callback = url_index_callback
 
     def can_acquire_and_start_new_session(self) -> bool:
         """Check if a session slot can be acquired and a new session can be started."""
@@ -202,6 +207,9 @@ class CreditIssuer:
             time.perf_counter_ns() - self._lifecycle.started_at_perf_ns
         )
 
+        # Get URL index from callback (for multi-URL load balancing)
+        url_index = self._url_index_callback() if self._url_index_callback else None
+
         credit = Credit(
             id=credit_index,
             phase=self._phase,
@@ -211,6 +219,7 @@ class CreditIssuer:
             num_turns=turn.num_turns,
             issued_at_ns=issued_at_ns,
             cancel_after_ns=cancel_after_ns,
+            url_index=url_index,
         )
 
         await self._credit_router.send_credit(credit=credit)

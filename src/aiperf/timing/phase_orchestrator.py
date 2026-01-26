@@ -17,9 +17,13 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
-from aiperf.common.factories import DatasetSamplingStrategyFactory
+from aiperf.common.factories import (
+    DatasetSamplingStrategyFactory,
+    URLSamplingStrategyFactory,
+)
 from aiperf.common.hooks import on_init, on_start
 from aiperf.common.mixins import AIPerfLifecycleMixin
+from aiperf.common.protocols import URLSamplingStrategyProtocol
 from aiperf.credit.callback_handler import CreditCallbackHandler
 from aiperf.timing.concurrency import ConcurrencyManager
 from aiperf.timing.conversation_source import ConversationSource
@@ -117,6 +121,13 @@ class PhaseOrchestrator(AIPerfLifecycleMixin):
             config.request_cancellation
         )
 
+        # URL sampler for multi-URL load balancing (None if single URL)
+        self._url_sampler: URLSamplingStrategyProtocol | None = None
+        if len(config.urls) > 1:
+            self._url_sampler = URLSamplingStrategyFactory.create_instance(
+                config.url_selection_strategy, urls=config.urls
+            )
+
         # Callback handler registered directly with router (no orchestrator in middle)
         self._callback_handler = CreditCallbackHandler(self._concurrency_manager)
         self._credit_router.set_return_callback(self._callback_handler.on_credit_return)
@@ -175,6 +186,11 @@ class PhaseOrchestrator(AIPerfLifecycleMixin):
             is_final_phase = i == len(self._ordered_phase_configs) - 1
             is_seamless_non_final = phase_config.seamless and not is_final_phase
 
+            # Create URL index callback from sampler if multi-URL is configured
+            url_index_callback = (
+                self._url_sampler.next_url_index if self._url_sampler else None
+            )
+
             runner = PhaseRunner(
                 config=phase_config,
                 conversation_source=self._conversation_source,
@@ -183,6 +199,7 @@ class PhaseOrchestrator(AIPerfLifecycleMixin):
                 concurrency_manager=self._concurrency_manager,
                 cancellation_policy=self._cancellation_policy,
                 callback_handler=self._callback_handler,
+                url_index_callback=url_index_callback,
             )
 
             # For seamless non-final phases, set callback to remove from active runners
