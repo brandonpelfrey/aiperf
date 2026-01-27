@@ -157,7 +157,7 @@ class EndpointConfig(BaseConfig):
             name=("--url-strategy",),
             group=_CLI_GROUP,
         ),
-    ] = URLSelectionStrategy.ROUND_ROBIN
+    ] = EndpointDefaults.URL_STRATEGY
 
     @property
     def url(self) -> str:
