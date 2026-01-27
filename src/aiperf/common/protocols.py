@@ -884,13 +884,15 @@ class TransportProtocol(AIPerfLifecycleProtocol, Protocol):
 
 
 @runtime_checkable
-class URLSamplingStrategyProtocol(Protocol):
-    """Protocol for URL sampling strategies.
+class URLSelectionStrategyProtocol(Protocol):
+    """Protocol for URL selection strategies.
 
     Used for load balancing across multiple endpoint URLs when multiple
     `--url` values are provided. Any class implementing this protocol must
-    provide a thread-safe `next_url_index` method that returns the next URL
-    index in a deterministic manner.
+    provide a `next_url_index` method that returns the next URL index.
+
+    Thread Safety:
+        Safe for asyncio single-threaded concurrency.
     """
 
     def __init__(self, urls: list[str], **kwargs) -> None: ...

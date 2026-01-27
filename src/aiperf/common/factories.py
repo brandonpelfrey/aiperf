@@ -67,7 +67,7 @@ if TYPE_CHECKING:
         ResultsProcessorProtocol,
         ServiceManagerProtocol,
         TransportProtocol,
-        URLSamplingStrategyProtocol,
+        URLSelectionStrategyProtocol,
     )
     from aiperf.dataset import (
         CustomDatasetLoaderProtocol,
@@ -705,10 +705,10 @@ class TransportFactory(AIPerfFactory[TransportType, "TransportProtocol"]):
         return None
 
 
-class URLSamplingStrategyFactory(
-    AIPerfFactory[URLSelectionStrategy, "URLSamplingStrategyProtocol"]
+class URLSelectionStrategyFactory(
+    AIPerfFactory[URLSelectionStrategy, "URLSelectionStrategyProtocol"]
 ):
-    """Factory for registering and creating URLSamplingStrategyProtocol instances based on the specified URL selection strategy.
+    """Factory for registering and creating URLSelectionStrategyProtocol instances based on the specified URL selection strategy.
 
     Used for load balancing across multiple endpoint URLs when multiple `--url` values are provided.
     see: :class:`aiperf.common.factories.AIPerfFactory` for more details.
@@ -720,7 +720,7 @@ class URLSamplingStrategyFactory(
         class_type: URLSelectionStrategy | str,
         urls: list[str],
         **kwargs,
-    ) -> URLSamplingStrategyProtocol:
+    ) -> URLSelectionStrategyProtocol:
         return super().create_instance(class_type, urls=urls, **kwargs)
 
 
