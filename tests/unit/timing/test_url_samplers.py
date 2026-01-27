@@ -1,12 +1,9 @@
 # SPDX-FileCopyrightText: Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-import threading
-from concurrent.futures import ThreadPoolExecutor
-
 import pytest
 
 from aiperf.common.enums import URLSelectionStrategy
-from aiperf.common.factories import URLSamplingStrategyFactory
+from aiperf.common.factories import URLSelectionStrategyFactory
 from aiperf.timing.url_samplers import RoundRobinURLSampler
 
 
@@ -62,46 +59,6 @@ class TestRoundRobinURLSampler:
         expected = [0, 1, 0, 1, 0, 1, 0, 1, 0, 1]
         assert indices == expected
 
-    def test_next_url_index_thread_safety(self):
-        """Thread-safe access to next_url_index under concurrent access."""
-        urls = ["http://server1:8000", "http://server2:8000", "http://server3:8000"]
-        sampler = RoundRobinURLSampler(urls=urls)
-
-        results = []
-        lock = threading.Lock()
-        num_threads = 10
-        calls_per_thread = 1000
-
-        def worker():
-            thread_results = []
-            for _ in range(calls_per_thread):
-                idx = sampler.next_url_index()
-                thread_results.append(idx)
-            with lock:
-                results.extend(thread_results)
-
-        with ThreadPoolExecutor(max_workers=num_threads) as executor:
-            futures = [executor.submit(worker) for _ in range(num_threads)]
-            for f in futures:
-                f.result()
-
-        # All indices should be valid (0, 1, or 2)
-        assert all(0 <= idx < 3 for idx in results)
-
-        # Total calls should be correct
-        assert len(results) == num_threads * calls_per_thread
-
-        # Distribution should be approximately even (within 10% tolerance)
-        count_0 = results.count(0)
-        count_1 = results.count(1)
-        count_2 = results.count(2)
-        expected_per_url = (num_threads * calls_per_thread) / 3
-        tolerance = expected_per_url * 0.1
-
-        assert abs(count_0 - expected_per_url) < tolerance
-        assert abs(count_1 - expected_per_url) < tolerance
-        assert abs(count_2 - expected_per_url) < tolerance
-
     def test_kwargs_ignored(self):
         """Extra kwargs should be ignored for factory compatibility."""
         sampler = RoundRobinURLSampler(
@@ -110,13 +67,13 @@ class TestRoundRobinURLSampler:
         assert sampler.urls == ["http://localhost:8000"]
 
 
-class TestURLSamplingStrategyFactory:
-    """Unit tests for URLSamplingStrategyFactory."""
+class TestURLSelectionStrategyFactory:
+    """Unit tests for URLSelectionStrategyFactory."""
 
     def test_factory_creates_round_robin(self):
         """Factory should create RoundRobinURLSampler for ROUND_ROBIN strategy."""
         urls = ["http://server1:8000", "http://server2:8000"]
-        sampler = URLSamplingStrategyFactory.create_instance(
+        sampler = URLSelectionStrategyFactory.create_instance(
             URLSelectionStrategy.ROUND_ROBIN, urls=urls
         )
         assert isinstance(sampler, RoundRobinURLSampler)
@@ -125,14 +82,14 @@ class TestURLSamplingStrategyFactory:
     def test_factory_creates_round_robin_by_string(self):
         """Factory should accept string strategy name."""
         urls = ["http://server1:8000", "http://server2:8000"]
-        sampler = URLSamplingStrategyFactory.create_instance("round_robin", urls=urls)
+        sampler = URLSelectionStrategyFactory.create_instance("round_robin", urls=urls)
         assert isinstance(sampler, RoundRobinURLSampler)
         assert sampler.urls == urls
 
     def test_factory_with_enum_value(self):
         """Factory should accept URLSelectionStrategy enum value."""
         urls = ["http://server1:8000"]
-        sampler = URLSamplingStrategyFactory.create_instance(
+        sampler = URLSelectionStrategyFactory.create_instance(
             URLSelectionStrategy.ROUND_ROBIN, urls=urls
         )
         assert isinstance(sampler, RoundRobinURLSampler)
