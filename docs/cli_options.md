@@ -122,12 +122,12 @@ Enable streaming responses. When enabled, the server streams tokens incrementall
 
 #### `-u`, `--url` `<list>`
 
-Base URL(s) of the API server(s) to benchmark. Multiple URLs can be specified for load balancing across multiple instances (e.g., `--url http://server1:8000 --url http://server2:8000`). The endpoint path is automatically appended based on `--endpoint-type` (e.g., `/v1/chat/completions` for `chat`). When multiple URLs are provided, requests are distributed according to `--url-strategy`.
-<br>_Default: `localhost:8000`_
+Base URL(s) of the API server(s) to benchmark. Multiple URLs can be specified for load balancing across multiple instances (e.g., `--url http://server1:8000 --url http://server2:8000`). The endpoint path is automatically appended based on `--endpoint-type` (e.g., `/v1/chat/completions` for `chat`).
+<br>_Default: `['localhost:8000']`_
 
 #### `--url-strategy` `<str>`
 
-Strategy for selecting URLs when multiple `--url` values are provided.
+Strategy for selecting URLs when multiple `--url` values are provided. 'round_robin' (default): distribute requests evenly across URLs in sequential order.
 
 **Choices:**
 
