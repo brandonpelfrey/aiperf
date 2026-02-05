@@ -36,6 +36,23 @@ from aiperf.plugin.enums import (
 _logger = AIPerfLogger(__name__)
 
 
+def _is_localhost_url(url: str) -> bool:
+    """Check if a URL points to localhost."""
+    from urllib.parse import urlparse
+
+    # Handle IPv6 localhost without brackets (e.g., "::1:8000")
+    if url.startswith("::1:") or url.startswith("[::1]"):
+        return True
+
+    # Add scheme if missing for proper parsing
+    if not url.startswith(("http://", "https://")):
+        url = f"http://{url}"
+
+    parsed = urlparse(url)
+    hostname = parsed.hostname or ""
+    return hostname.lower() in ("localhost", "127.0.0.1", "::1")
+
+
 def _should_quote_arg(x: Any) -> bool:
     """Determine if the value should be quoted in the CLI command."""
     return isinstance(x, str) and not x.startswith("-") and x not in ("profile")
@@ -510,6 +527,20 @@ class UserConfig(BaseConfig):
         self._gpu_telemetry_collector_type = collector_type
         self._gpu_telemetry_urls = urls
         self._gpu_telemetry_metrics_file = metrics_file
+
+        # Warn if pynvml is used with non-localhost server URLs
+        if collector_type == GPUTelemetryCollectorType.PYNVML:
+            non_local_urls = [
+                url for url in self.endpoint.urls if not _is_localhost_url(url)
+            ]
+            if non_local_urls:
+                _logger.warning(
+                    f"Using pynvml for GPU telemetry with non-localhost server URL(s): {non_local_urls}. "
+                    "pynvml collects GPU metrics from the local machine only. "
+                    "If the inference server is running remotely, the GPU telemetry will not reflect "
+                    "the server's GPU usage. Consider using DCGM mode with the server's metrics endpoint instead."
+                )
+
         return self
 
     @property

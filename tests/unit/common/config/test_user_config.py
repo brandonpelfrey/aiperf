@@ -384,6 +384,78 @@ class TestGPUTelemetryConfig:
         assert config.gpu_telemetry_urls == []
 
     @pytest.mark.parametrize(
+        "url,should_warn",
+        [
+            ("localhost:8000", False),
+            ("http://localhost:8000", False),
+            ("127.0.0.1:8000", False),
+            ("http://127.0.0.1:8000", False),
+            ("::1:8000", False),
+            ("http://[::1]:8000", False),
+            ("remote-server:8000", True),
+            ("http://remote-server:8000", True),
+            ("192.168.1.100:8000", True),
+            ("http://192.168.1.100:8000", True),
+        ],
+    )
+    def test_pynvml_warns_on_non_localhost_url(self, url, should_warn, caplog):
+        """Test that pynvml with non-localhost server URLs emits a warning."""
+        import logging
+
+        caplog.set_level(logging.WARNING)
+
+        make_config(
+            endpoint=make_endpoint(url=url),
+            gpu_telemetry=["pynvml"],
+        )
+
+        warning_present = any(
+            "pynvml collects GPU metrics from the local machine only" in record.message
+            for record in caplog.records
+        )
+        assert warning_present == should_warn, (
+            f"Expected warning={'present' if should_warn else 'absent'} for URL {url}, "
+            f"but got {'present' if warning_present else 'absent'}"
+        )
+
+    def test_pynvml_warns_lists_non_localhost_urls(self, caplog):
+        """Test that the warning lists the non-localhost URLs."""
+        import logging
+
+        caplog.set_level(logging.WARNING)
+
+        make_config(
+            endpoint=make_endpoint(
+                urls=["http://remote-server:8000", "http://other-server:8000"]
+            ),
+            gpu_telemetry=["pynvml"],
+        )
+
+        warning_messages = [r.message for r in caplog.records if "pynvml" in r.message]
+        assert len(warning_messages) == 1
+        assert "remote-server" in warning_messages[0]
+        assert "other-server" in warning_messages[0]
+
+    def test_pynvml_no_warn_on_localhost_only(self, caplog):
+        """Test that pynvml with only localhost URLs does not emit a warning."""
+        import logging
+
+        caplog.set_level(logging.WARNING)
+
+        make_config(
+            endpoint=make_endpoint(
+                urls=["http://localhost:8000", "http://127.0.0.1:8001"]
+            ),
+            gpu_telemetry=["pynvml"],
+        )
+
+        warning_present = any(
+            "pynvml collects GPU metrics from the local machine only" in record.message
+            for record in caplog.records
+        )
+        assert not warning_present
+
+    @pytest.mark.parametrize(
         "invalid_item",
         [
             "unknown",
