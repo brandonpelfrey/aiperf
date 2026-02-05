@@ -675,12 +675,8 @@ class TestProfileConfigureCommand:
 
         # Mock DCGMTelemetryCollector methods for reachability and baseline capture
         with (
-            patch.object(
-                DCGMTelemetryCollector, "is_url_reachable", return_value=True
-            ),
-            patch.object(
-                DCGMTelemetryCollector, "initialize", new_callable=AsyncMock
-            ),
+            patch.object(DCGMTelemetryCollector, "is_url_reachable", return_value=True),
+            patch.object(DCGMTelemetryCollector, "initialize", new_callable=AsyncMock),
             patch.object(
                 DCGMTelemetryCollector,
                 "collect_and_process_metrics",
@@ -931,9 +927,10 @@ class TestPynvmlCollectorIntegration:
         mock_collector = AsyncMock()
         mock_collector.is_url_reachable = AsyncMock(return_value=True)
 
+        MockCollectorClass = MagicMock(return_value=mock_collector)
         with patch(
-            "aiperf.gpu_telemetry.pynvml_collector.PyNVMLTelemetryCollector",
-            return_value=mock_collector,
+            "aiperf.plugin.plugins.get_class",
+            return_value=MockCollectorClass,
         ):
             configure_msg = ProfileConfigureCommand(
                 command_id="test", service_id="system_controller", config={}
@@ -964,9 +961,10 @@ class TestPynvmlCollectorIntegration:
         mock_collector = AsyncMock()
         mock_collector.is_url_reachable = AsyncMock(return_value=False)
 
+        MockCollectorClass = MagicMock(return_value=mock_collector)
         with patch(
-            "aiperf.gpu_telemetry.pynvml_collector.PyNVMLTelemetryCollector",
-            return_value=mock_collector,
+            "aiperf.plugin.plugins.get_class",
+            return_value=MockCollectorClass,
         ):
             configure_msg = ProfileConfigureCommand(
                 command_id="test", service_id="system_controller", config={}
@@ -995,7 +993,7 @@ class TestPynvmlCollectorIntegration:
         manager.publish = AsyncMock()
 
         with patch(
-            "aiperf.gpu_telemetry.pynvml_collector.PyNVMLTelemetryCollector",
+            "aiperf.plugin.plugins.get_class",
             side_effect=RuntimeError(
                 "pynvml package not installed. Install with: pip install nvidia-ml-py"
             ),
@@ -1025,7 +1023,7 @@ class TestPynvmlCollectorIntegration:
         manager.publish = AsyncMock()
 
         with patch(
-            "aiperf.gpu_telemetry.pynvml_collector.PyNVMLTelemetryCollector",
+            "aiperf.plugin.plugins.get_class",
             side_effect=ValueError("Unexpected initialization error"),
         ):
             configure_msg = ProfileConfigureCommand(

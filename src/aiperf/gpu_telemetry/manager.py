@@ -20,7 +20,8 @@ from aiperf.common.protocols import PushClientProtocol
 from aiperf.gpu_telemetry.constants import PYNVML_SOURCE_IDENTIFIER
 from aiperf.gpu_telemetry.dcgm_collector import DCGMTelemetryCollector
 from aiperf.gpu_telemetry.protocols import GPUTelemetryCollectorProtocol
-from aiperf.plugin.enums import GPUTelemetryCollectorType
+from aiperf.plugin import plugins
+from aiperf.plugin.enums import GPUTelemetryCollectorType, PluginType
 
 __all__ = ["GPUTelemetryManager"]
 
@@ -184,11 +185,13 @@ class GPUTelemetryManager(BaseComponentService):
         self.debug("GPU Telemetry: Configuring pynvml collector")
 
         try:
-            # Import here to defer pynvml check until actually needed
-            from aiperf.gpu_telemetry.pynvml_collector import PyNVMLTelemetryCollector
+            CollectorClass = plugins.get_class(
+                PluginType.GPU_TELEMETRY_COLLECTOR,
+                GPUTelemetryCollectorType.PYNVML,
+            )
 
             collector_id = "pynvml_collector"
-            collector = PyNVMLTelemetryCollector(
+            collector = CollectorClass(
                 collection_interval=self._collection_interval,
                 record_callback=self._on_telemetry_records,
                 error_callback=self._on_telemetry_error,
